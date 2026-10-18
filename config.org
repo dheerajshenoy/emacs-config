@@ -1,0 +1,531 @@
+#+TITLE: Emacs Config
+
+* early-init.el
+** Lexical Binding
+
+#+begin_src elisp :tangle early-init.el
+;; -*- lexical-binding: t; -*-
+#+end_src
+
+** Set Custom File
+
+#+begin_src elisp :tangle early-init.el
+(setq custom-file (concat user-emacs-directory "custom.el"))
+(load custom-file 'noerror 'nomessage)
+#+end_src
+
+** Faster Startup
+
+#+begin_src elisp :tangle early-init.el
+;; Delay garbage collection while Emacs is booting
+(setq gc-cons-threshold most-positive-fixnum
+      read-process-output-max (* 4 1024 1024)
+      gc-cons-percentage 0.6)
+
+;; Temporarily disable file name handler ALIST during boot
+(defvar dj/default-file-name-handler-alist file-name-handler-alist)
+(setq file-name-handler-alist nil)
+
+;; Sensible values for after booting
+(add-hook 'after-init-hook
+          (lambda ()
+            (setq gc-cons-threshold (* 100 1024 1024)
+                  gc-cons-percentage 0.1
+                  file-name-handler-alist dj/default-file-name-handler-alist)))
+
+;; A single VC backend speeds up booting
+(setq vc-handled-backends '(Git))
+
+(setq inhibit-compacting-font-caches t)
+#+end_src
+
+** Disable unused UI elements
+
+#+begin_src elisp :tangle early-init.el
+(if (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+(if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(if (fboundp 'tooltip-mode) (tooltip-mode -1))
+(if (fboundp 'fringe-mode) (fringe-mode 0))
+(setq inhibit-startup-screen t)
+#+end_src
+
+** Keep the *Messages* buffer quiet
+
+#+begin_src elisp :tangle early-init.el
+(setq warning-minimum-level :error)
+(setq warning-suppress-types '((lexical-binding)))
+#+end_src
+
+** Don't start package at startup
+
+#+begin_src elisp :tangle early-init.el
+(setq package-enable-at-startup nil)
+(setq load-prefer-newer t)
+#+end_src
+
+** Set font
+
+#+begin_src elisp :tangle early-init.el
+(set-face-attribute 'default nil :family "Berkeley Mono" :height 120)
+#+end_src
+
+** Theme
+
+#+begin_src elisp :tangle early-init.el
+(load-theme 'modus-vivendi t)
+#+end_src
+
+** Provide
+
+#+begin_src elisp :tangle early-init.el
+(provide 'early-init)
+#+end_src
+
+* init.el
+** Lexical Binding
+
+#+begin_src elisp :tangle init.el
+;; -*- lexical-binding: t; -*-
+#+end_src
+
+** Package Management
+
+#+begin_src elisp :tangle init.el
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
+(setq use-package-hook-name-suffix nil)
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+#+end_src
+
+** Display Buffer Alist
+
+#+begin_src elisp :tangle init.el
+(setq display-buffer-alist
+      '(("\\*compilation\\*"
+         (display-buffer-full-frame)
+         (inhibit-same-window . nil))
+        ("^magit:"
+         (display-buffer-full-frame)
+         (inhibit-same-window . nil))
+        ("^\\*Org Src"
+         (display-buffer-full-frame)
+         (inhibit-same-window . nil))))
+#+end_src
+
+** Built In
+*** Compile
+
+#+begin_src elisp :tangle init.el
+(use-package compile
+  :ensure nil
+  :custom
+  (compilation-scroll-output t)
+  (compilation-ask-about-save nil)
+  :config
+  (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter))
+#+end_src
+
+*** Imenu
+
+#+begin_src elisp :tangle init.el
+(use-package imenu
+  :ensure nil
+  :custom
+  (imenu-auto-rescan t)
+  (imenu-auto-rescan-maxout 1000000)
+  (imenu-max-item-length 200)
+  (imenu-sort-function nil)
+  (imenu-flatten t))
+#+end_src
+
+*** Comp
+
+#+begin_src elisp :tangle init.el
+(use-package comp
+  :ensure nil
+  :custom
+  (native-comp-async-on-battery-power nil)
+  (native-comp-async-report-warnings-errors nil)
+  (native-comp-jit-compilation t))
+#+end_src
+
+*** ByteComp
+
+#+begin_src elisp :tangle init.el
+(use-package bytecomp
+  :ensure nil
+  :custom
+  (byte-compile-warnings '(cl-functions)))
+#+end_src
+
+*** Org Mode
+
+#+begin_src elisp :tangle init.el
+(use-package org
+  :ensure nil
+  :config
+  (require 'org-tempo)
+  (setopt org-src-content-indentation 0))
+#+end_src
+
+*** Emacs Settings
+
+#+begin_src elisp :tangle init.el
+(use-package emacs
+  :ensure nil
+  :init
+  (global-display-line-numbers-mode 1)
+  (global-goto-address-mode 1)
+  (pixel-scroll-precision-mode 1)
+  (savehist-mode 1)
+  (recentf-mode 1)
+  (repeat-mode 1)
+  (save-place-mode 1)
+  (winner-mode 1)
+  (delete-selection-mode 1)
+  (global-auto-revert-mode 1)
+
+  :config
+  (setq-default indent-tabs-mode nil)
+  (tooltip-mode -1)
+  (prefer-coding-system 'utf-8)
+  (set-terminal-coding-system 'utf-8)
+  (set-keyboard-coding-system 'utf-8)
+
+  :custom
+  (text-quoting-style 'curve)
+  (truncate-string-ellipsis "…")
+  (column-number-mode t)
+  (use-short-answers t)
+  (kill-region-dwim 'emacs-word)
+  (delete-pair-blink-delay 0)
+  (display-line-numbers-width 4)
+  (display-line-numbers-widen t)
+  (display-fill-column-indicator-warning nil)
+  (display-line-numbers-type 'visual)
+  (help-window-select t)
+  (inhibit-startup-message t)
+  (inhibit-startup-buffer-menu t)
+  (initial-scratch-message nil)
+  (ibuffer-human-readable-size t)
+  (kill-do-not-save-duplicates t)
+  (pixel-scroll-precision-use-momentum nil)
+  (read-answer-short t)
+  (redisplay-skip-fontification-on-input t)
+  (recentf-max-saved-items 300)
+  (recentf-max-menu-items 15)
+  (frame-resize-pixelwise t)
+  (frame-inhibit-implied-resize t)
+  (next-screen-context-lines 30)
+  (scroll-error-top-bottom t)
+  (scroll-preserve-screen-position t)
+  (tramp-copy-size-limit (* 2 1024 1024)) ; 2MB
+  (tramp-verbose 1)
+  (query-replace-show-preview t)
+  (resize-mini-windows t)
+  (scroll-conservatively 8)
+  (scroll-margin 5)
+  (split-width-threshold 170)
+  (split-height-threshold nil)
+  (tab-width 4)
+  (treesit-font-lock-level 4)
+  (treesit-auto-install-grammar 'prompt)
+  (truncate-lines t)
+  (use-dialog-box nil)
+  (use-file-dialog nil)
+  (x-stretch-cursor t)
+  (ring-bell-function 'ignore)
+  (bidi-display-reordering 'never)
+  (bidi-inhibit-bpa t)
+  (xref-search-program 'ripgrep)
+  (tab-always-indent 'complete)
+  (text-mode-ispell-word-completion nil)
+  ;; Hide commands that do not apply in the current mode
+  (read-extended-command-predicate #'command-completion-default-include-p))
+#+end_src
+
+*** Dired
+
+#+begin_src elisp :tangle init.el
+(use-package dired
+  :ensure nil
+  :hook (dired-mode-hook . hl-line-mode)
+  :custom
+  (dired-auto-revert-buffer t)
+  (dired-dwim-target t)
+  (dired-recursive-copies 'always)
+  (dired-recursive-deletes 'always)
+  (dired-vc-rename-file t)
+  (dired-create-destination-dirs 'ask)
+  (dired-kill-when-opening-new-dired-buffer t)
+  (dired-listing-switches "-AGFhlv --group-directories-first --time-style=long-iso"))
+#+end_src
+
+*** Version Control
+
+#+begin_src elisp :tangle init.el
+(use-package vc
+  :ensure nil
+  :defer t
+  :custom
+  (vc-handled-backends '(Git))
+  (vc-follow-symlinks t)
+  (vc-make-backup-files nil))
+#+end_src
+
+*** Eshell
+
+#+begin_src elisp :tangle init.el
+(use-package eshell
+  :ensure nil
+  :custom
+  (eshell-banner-message "")
+  (eshell-save-history-on-exit t)
+  (eshell-hist-ignoredups t)
+  (eshell-history-size 100000)
+  (eshell-last-dir-ring-size 1000)
+  :config
+  (require 'esh-mode))
+#+end_src
+
+*** Auto-revert
+
+#+begin_src elisp :tangle init.el
+(use-package autorevert
+  :ensure nil
+  :custom
+  (auto-revert-remote-files nil)
+  (auto-revert-verbose nil)
+  (auto-revert-avoid-polling t)
+  (global-auto-revert-non-file-buffers t))
+#+end_src
+
+*** Calendar
+
+#+begin_src elisp :tangle init.el
+(use-package calendar
+  :ensure nil
+  :custom
+  (calendar-week-start-day 1)
+  (calendar-date-style 'iso)
+  (holiday-bahai-holidays nil))
+#+end_src
+
+*** Isearch
+
+#+begin_src elisp :tangle init.el
+(use-package isearch
+  :ensure nil
+  :custom
+  (search-default-mode #'char-fold-to-regexp)
+  (isearch-yank-on-move t)
+  (isearch-lazy-count t)
+  (lazy-count-prefix-format nil)
+  (lazy-count-suffix-format " (%s/%s)")
+  (isearch-allow-scroll 'unlimited)
+  (search-upper-case t)
+  (search-exit-option t)
+  :hook
+  (isearch-mode-end-hook . recenter-top-bottom))
+#+end_src
+
+*** Files
+
+#+begin_src elisp :tangle init.el
+(use-package files
+  :ensure nil
+  :custom
+  (confirm-kill-processes nil)
+  (tramp-use-scp-direct-remote-copying t)
+  (remote-file-name-inhibit-delete-by-moving-to-trash t)
+  (remote-file-name-inhibit-auto-save t)
+  (remote-file-name-inhibit-locks t)
+  (remote-file-name-inhibit-auto-save-visited t)
+  (create-lockfiles nil)
+  (find-file-visit-truename t)
+  (enable-local-variables t)
+  (delete-by-moving-to-trash t)
+  (auto-save-no-message t)
+  (delete-old-versions t)
+  (require-final-newline t)
+  (make-backup-files nil))
+#+end_src
+
+** GCMH
+
+#+begin_src elisp :tangle init.el
+(use-package gcmh
+  :ensure t
+  :config
+  (gcmh-mode 1))
+#+end_src
+
+** Corfu
+
+#+begin_src elisp :tangle init.el
+(use-package corfu
+  :ensure t
+  :custom
+  (corfu-auto t)
+  (corfu-auto-delay 0.1)
+  (corfu-auto-prefix 2)
+  :init
+  (global-corfu-mode))
+#+end_src
+
+** Vertico
+
+#+begin_src elisp :tangle init.el
+(use-package vertico
+  :ensure t
+  :init
+  (vertico-mode))
+#+end_src
+
+** Orderless
+
+#+begin_src elisp :tangle init.el
+(use-package orderless
+  :ensure t
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-overrides '((file (styles partial-completion))))
+  (completion-category-defaults nil)
+  (completion-pcm-leading-wildcard t))
+#+end_src
+
+** Consult
+
+#+begin_src elisp :tangle init.el
+(use-package consult
+  :ensure t
+  :bind (("M-i" . consult-imenu)
+         ("M-I" . consult-imenu-multi)
+         ("C-s" . consult-line)
+         ("C-x b" . consult-buffer)
+         ("C-c r g" . consult-ripgrep)))
+#+end_src
+
+** Eglot
+
+#+begin_src elisp :tangle init.el
+(use-package eglot
+  :ensure nil
+  :hook ((c++-mode-hook . eglot-ensure)
+         (python-mode-hook . eglot-ensure)))
+#+end_src
+
+** Magit
+
+#+begin_src elisp :tangle init.el
+(use-package magit
+  :ensure t
+  :commands (magit-status)
+  :hook (git-commit-mode-hook . turn-on-auto-fill)
+  :custom
+  (magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+  (magit-restore-window-configuration-in-all-buffers t)
+  (magit-refresh-status-buffer nil)
+  (git-commit-summary-max-length 50)
+  (git-commit-style-convention-checks '(overlong-summary-line non-empty-second-line))
+  (magit-diff-refine-hunk 'all))
+
+#+end_src
+
+** Spacious Padding
+
+#+begin_src elisp :tangle init.el
+(use-package spacious-padding
+  :ensure t
+  :hook (window-setup-hook . (lambda ()
+                               (spacious-padding-mode 1)
+                               (set-frame-size (selected-frame)
+                                               (frame-pixel-width)
+                                               (frame-pixel-height)
+                                               t))))
+#+end_src
+
+** Marginalia
+
+#+begin_src elisp :tangle init.el
+(use-package marginalia
+  :ensure t
+  :init
+  (marginalia-mode))
+#+end_src
+
+** Which-Key
+
+#+begin_src elisp :tangle init.el
+(use-package which-key
+  :ensure nil
+  :custom
+  (which-key-idle-delay 2)
+  :config
+  (which-key-mode))
+#+end_src
+
+** Helpful
+
+#+begin_src elisp :tangle init.el
+(use-package helpful
+  :ensure t
+  :config
+  ;; always use `helpful', even when `describe-function' is called by a program
+  (advice-add 'describe-function :override #'helpful-function)
+  :hook
+  (minibuffer-setup-hook . (lambda () (require 'helpful)))
+  :bind
+  (("C-h k" . helpful-key)
+   ("C-h f" . helpful-function)
+   ("C-h c" . helpful-command)
+   ("C-h o" . helpful-symbol)
+   ("C-h v" . helpful-variable)
+   ("C-h ." . helpful-at-point)))
+#+end_src
+
+** HL TODO
+
+#+begin_src elisp :tangle init.el
+(use-package hl-todo
+  :ensure t
+  :config
+  (setopt hl-todo-keyword-faces
+          '(("TODO" . "yellow")
+            ("FIX" . "red")
+            ("HACK" . "orange")))
+  (setopt hl-todo-color-background nil)
+  (global-hl-todo-mode))
+#+end_src
+
+** Keybindings
+
+#+begin_src elisp :tangle init.el
+(keymap-global-set "C-x C-r" 'recentf)
+(keymap-global-set "<f5>" 'recompile)          ; Re-run last compile command quickly
+(keymap-global-set "S-<f5>" 'compile)          ; Prompt for a new compile command
+#+end_src
+
+** Evil
+
+#+begin_src elisp :tangle init.el
+(use-package evil
+  :ensure t
+  :custom
+  (evil-want-integration t)
+  (evil-want-keybinding nil)
+  (evil-want-C-u-scroll t)
+  (evil-undo-system 'undo-redo)
+  :init
+  (evil-mode))
+
+(use-package evil-collection
+  :ensure t
+  :after evil
+  :config
+  (evil-collection-init))
+#+end_src
