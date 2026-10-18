@@ -4,4 +4,4 @@
 
 # How to use this file ?
 
-Open `config.org` in emacs, press `C-c v t (org-babel-tangle)` which tangles (outputs) two files `early-init.el` and `init.el`
+Open `config.org` in emacs, press `C-c C-v C-t (org-babel-tangle)` which tangles (outputs) two files `early-init.el` and `init.el`
